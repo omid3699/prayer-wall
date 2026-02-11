@@ -44,7 +44,7 @@ EXTERNAL_APPS = [
 
 # Local apps for this project (add your app names here)
 LOCAL_APPS = [
-    # 'prayers',
+    "apps.users",
 ]
 
 INSTALLED_APPS = [*DJANGO_APPS, *EXTERNAL_APPS, *LOCAL_APPS]
@@ -110,6 +110,8 @@ MEDIA_URL = "/media/"
 MEDIA_ROOT = BASE_DIR / "media"
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
+
+AUTH_USER_MODEL = "users.User"
 
 LOGGING = {
     "version": 1,

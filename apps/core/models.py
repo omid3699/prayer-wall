@@ -24,12 +24,3 @@ class BaseModel(models.Model):
 
         abstract = True
         ordering: typing.ClassVar[list[str]] = ["-created_at"]
-
-    def __str__(self) -> str:
-        """Human-friendly representation.
-
-        If a model defines a `name` or `title` attribute/field, prefer that; fall
-        back to the UUID.
-        """
-        name = getattr(self, "name", None) or getattr(self, "title", None)
-        return str(name) if name is not None else str(self.uuid)

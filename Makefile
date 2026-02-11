@@ -49,6 +49,8 @@ check: ## check Django project for issues (migrations, staticfiles, etc.)
 
 lint: ## Run ruff linter (if available)
 	$(RUN) ruff check . --fix
+lint-unsafe: ## Run ruff linter with unsafe fixes
+	$(RUN) ruff check . --fix --unsafe-fixes
 format: ## Run ruff format (if available)
 	$(RUN) ruff format .
 
