@@ -1,0 +1,65 @@
+[project]
+name = "prayer-wall"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.14"
+dependencies = [
+    "django>=6.0.2",
+    "djangorestframework>=3.16.1",
+    "psycopg-binary>=3.3.2",
+    "python-dotenv>=1.0.0",
+    "dj-database-url>=1.0.0",
+]
+
+[dependency-groups]
+dev = [
+    "ruff>=0.15.0",
+]
+
+[tool.ruff]
+line-length = 88
+indent-width = 4
+exclude = [
+    ".venv",
+    "build",
+    "dist",
+    "migrations",
+    "__pycache__",
+    ".git",
+]
+target-version = "py311"
+
+[tool.ruff.lint]
+select = [
+    "E",
+    "F",
+    "I",
+    "D",
+    "DJ",
+    "UP",
+    "B",
+    "C4",
+    "SIM",
+    "TID",
+    "RUF",
+]
+ignore = [
+    "D100",
+    "D104",
+    "D203",
+    "D213",
+]
+# Note: D203/D211 and D212/D213 are mutually exclusive; see Ruff docs for details.
+
+[tool.ruff.lint.isort]
+known-first-party = ["config", "prayers"]
+combine-as-imports = true
+force-single-line = false
+lines-after-imports = 2
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+skip-magic-trailing-comma = false
+line-ending = "auto"
