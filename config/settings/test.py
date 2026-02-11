@@ -1,4 +1,6 @@
-from .base import LOGGING
+"""Test settings."""
+
+from .base import *  # noqa: F403
 
 
 DEBUG = False
@@ -14,5 +16,5 @@ DATABASES = {
     }
 }
 
-LOGGING["root"]["level"] = "WARNING"
+LOGGING["root"]["level"] = "WARNING"  # noqa: F405
 EMAIL_BACKEND = "django.core.mail.backends.locmem.EmailBackend"
