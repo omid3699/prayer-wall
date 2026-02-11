@@ -1,0 +1,14 @@
+from django.contrib import admin
+
+
+class BaseAdmin(admin.ModelAdmin):
+    """A small base admin that can be reused across models that inherit
+    from `BaseModel`.
+
+    - Shows UUID and timestamps in `list_display` and `readonly_fields`.
+    - Orders by `-created_at` by default.
+    """
+
+    list_display = ("uuid", "created_at", "updated_at")
+    readonly_fields = ("uuid", "created_at", "updated_at")
+    ordering = ("-created_at",)

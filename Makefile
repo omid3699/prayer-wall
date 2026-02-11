@@ -33,7 +33,7 @@ runserver: ## Run Django development server (defaults to config.settings.develop
 run: runserver ## Alias for runserver
 
 test: ## Run Django tests using test settings (config.settings.test)
-	$(MANAGE) test --settings=config.settings.test
+	$(RUN) pytest -v --ds=config.settings.test
 
 createsuperuser: ## Create a Django superuser (interactive)
 	$(MANAGE) createsuperuser

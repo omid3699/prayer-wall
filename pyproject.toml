@@ -14,8 +14,18 @@ dependencies = [
 
 [dependency-groups]
 dev = [
+    "pytest>=8.0.0",
+    "pytest-django>=4.9.0",
     "ruff>=0.15.0",
 ]
+
+[tool.pytest.ini_options]
+DJANGO_SETTINGS_MODULE = "config.settings.test"
+python_files = ["test_*.py", "*_test.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+addopts = "-v --tb=short"
+testpaths = ["apps"]
 
 [tool.ruff]
 line-length = 88
