@@ -59,6 +59,8 @@ ignore = [
     "D104",
     "D203",
     "D213",
+    "D106",
+    "D102",
 ]
 # Note: D203/D211 and D212/D213 are mutually exclusive; see Ruff docs for details.
 
