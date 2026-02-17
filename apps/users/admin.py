@@ -1,7 +1,7 @@
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin as DjangoUserAdmin
 
-from .models import User
+from .models import AnonymousUser, User
 
 
 @admin.register(User)
@@ -53,3 +53,15 @@ class UserAdmin(DjangoUserAdmin):
             },
         ),
     )
+
+
+class AnonymousUserAdmin(admin.ModelAdmin):
+    """Admin for the AnonymousUser model.
+
+    Displays IP address, user agent and display name in the admin list view.
+    """
+
+    model = AnonymousUser
+    list_display = ("id", "display_name", "ip_address", "user_agent", "created_at")
+    search_fields = ("display_name", "ip_address", "user_agent")
+    ordering = ("-created_at",)
