@@ -40,6 +40,7 @@ DJANGO_APPS = [
 
 EXTERNAL_APPS = [
     "rest_framework",
+    "drf_spectacular",
 ]
 
 # Local apps for this project (add your app names here)
@@ -60,6 +61,17 @@ MIDDLEWARE = [
 ]
 
 ROOT_URLCONF = "config.urls"
+
+REST_FRAMEWORK = {
+    "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
+}
+
+SPECTACULAR_SETTINGS = {
+    "TITLE": "Prayer Wall API",
+    "DESCRIPTION": "API documentation for the Prayer Wall service.",
+    "VERSION": "1.0.0",
+    "SERVE_INCLUDE_SCHEMA": False,
+}
 
 TEMPLATES = [
     {
