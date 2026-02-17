@@ -34,7 +34,7 @@ class TestUserModel:
         user = User.objects.create_user(
             username="flaguser", email="flag@example.com", password="pass1234"
         )
-        assert user.is_verfied is False
+        assert user.is_verified is False
         assert user.is_blocked is False
 
     def test_inherited_fields(self):

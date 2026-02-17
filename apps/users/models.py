@@ -9,7 +9,7 @@ class User(BaseModel, AbstractUser):
 
     email = models.EmailField(unique=True)
 
-    is_verfied = models.BooleanField(default=False)
+    is_verified = models.BooleanField(default=False)
     is_blocked = models.BooleanField(default=False)
 
     ip_address = models.GenericIPAddressField(null=True, blank=True)
@@ -24,8 +24,9 @@ class AnonymousUser(BaseModel):
     """Model to represent anonymous users with IP and user agent information."""
 
     display_name = models.CharField(max_length=255, default="Anonymous User")
-    ip_address = models.GenericIPAddressField()
-    user_agent = models.CharField(max_length=255)
+    ip_address = models.GenericIPAddressField(null=True, blank=True)
+    user_agent = models.CharField(max_length=255, blank=True)
+    is_blocked = models.BooleanField(default=False)
 
     def __str__(self) -> str:
         """Return the IP address as string representation."""
