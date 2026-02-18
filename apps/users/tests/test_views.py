@@ -36,7 +36,9 @@ class TestUserEndpoints:
         assert response.data["email"] == "user@example.com"
 
     def test_user_detail_admin_can_view_other(self, api_client):
-        admin = User.objects.create_superuser(email="admin@example.com", password="pass1234")
+        admin = User.objects.create_superuser(
+            email="admin@example.com", password="pass1234"
+        )
         other = User.objects.create_user(email="other@example.com", password="pass1234")
         api_client.force_authenticate(user=admin)
         response = api_client.get(reverse("users:detail", kwargs={"id": other.id}))
@@ -53,7 +55,9 @@ class TestUserEndpoints:
     def test_update_self(self, api_client):
         user = User.objects.create_user(email="user@example.com", password="pass1234")
         api_client.force_authenticate(user=user)
-        response = api_client.patch(reverse("users:update"), {"first_name": "New"}, format="json")
+        response = api_client.patch(
+            reverse("users:update"), {"first_name": "New"}, format="json"
+        )
         assert response.status_code == 200
         assert response.data["first_name"] == "New"
 
@@ -69,7 +73,9 @@ class TestUserEndpoints:
         response = api_client.get(reverse("users:list"))
         assert response.status_code == 403
 
-        admin = User.objects.create_superuser(email="admin@example.com", password="pass1234")
+        admin = User.objects.create_superuser(
+            email="admin@example.com", password="pass1234"
+        )
         api_client.force_authenticate(user=admin)
         response = api_client.get(reverse("users:list"))
         assert response.status_code == 200

@@ -56,7 +56,9 @@ class TestUserSerializer:
         assert user.first_name == "Test"
 
     def test_admin_fields_included(self, request_factory):
-        admin = User.objects.create_superuser(email="admin@example.com", password="pass1234")
+        admin = User.objects.create_superuser(
+            email="admin@example.com", password="pass1234"
+        )
         request = request_factory.get("/users/me/")
         request.user = admin
         serializer = UserSerializer(instance=admin, context={"request": request})
