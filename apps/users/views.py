@@ -2,12 +2,16 @@ from typing import ClassVar
 
 from django.shortcuts import get_object_or_404
 from rest_framework import generics
+from rest_framework.authtoken.models import Token
+from rest_framework.authtoken.views import ObtainAuthToken
 from rest_framework.exceptions import PermissionDenied
 from rest_framework.permissions import IsAdminUser, IsAuthenticated
+from rest_framework.response import Response
 
 from .models import AnonymousUser, User
 from .serializers import (
     AnonymousUserSerializer,
+    EmailAuthTokenSerializer,
     UserRegistrationSerializer,
     UserSerializer,
 )
@@ -126,3 +130,18 @@ class AnonymousUserDetail(generics.RetrieveAPIView):
     def get_object(self):
         anon_id = self.kwargs.get("id")
         return get_object_or_404(AnonymousUser, id=anon_id)
+
+
+class EmailObtainAuthToken(ObtainAuthToken):
+    """Custom auth token view that works with email-only users."""
+
+    serializer_class = EmailAuthTokenSerializer
+
+    def post(self, request, *args, **kwargs):
+        serializer = self.serializer_class(
+            data=request.data, context={"request": request}
+        )
+        serializer.is_valid(raise_exception=True)
+        user = serializer.validated_data["user"]
+        token, _ = Token.objects.get_or_create(user=user)
+        return Response({"token": token.key})

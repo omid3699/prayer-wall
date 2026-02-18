@@ -5,6 +5,7 @@ from .views import (
     AnonymousUserDelete,
     AnonymousUserDetail,
     AnonymousUserList,
+    EmailObtainAuthToken,
     UserDelete,
     UserDetail,
     UserList,
@@ -16,6 +17,7 @@ from .views import (
 app_name = "users"
 
 urlpatterns = [
+    path("auth/token/", EmailObtainAuthToken.as_view(), name="api-token-auth"),
     path("register/", UserRegister.as_view(), name="register"),
     path("me/", UserDetail.as_view(), name="me"),
     path("<uuid:id>/", UserDetail.as_view(), name="detail"),
