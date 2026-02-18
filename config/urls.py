@@ -7,6 +7,7 @@ from drf_spectacular.views import (
 )
 from rest_framework.authtoken.views import obtain_auth_token
 
+
 urlpatterns = [
     path("admin/", admin.site.urls),
     path("users/", include("apps.users.urls", namespace="users")),
