@@ -14,19 +14,20 @@ class UserAdmin(DjangoUserAdmin):
 
     model = User
     list_display = (
-        "username",
         "email",
+        "first_name",
+        "last_name",
         "is_verified",
         "is_blocked",
         "created_at",
     )
     list_filter = ("is_verified", "is_blocked", "is_staff", "is_superuser", "is_active")
-    search_fields = ("username", "email")
+    search_fields = ("email", "first_name", "last_name")
     ordering = ("-created_at",)
 
     fieldsets = (
-        (None, {"fields": ("username", "password")}),
-        ("Personal info", {"fields": ("first_name", "last_name", "email")}),
+        (None, {"fields": ("email", "password")}),
+        ("Personal info", {"fields": ("first_name", "last_name")}),
         (
             "Permissions",
             {
@@ -49,12 +50,13 @@ class UserAdmin(DjangoUserAdmin):
             None,
             {
                 "classes": ("wide",),
-                "fields": ("username", "email", "password1", "password2"),
+                "fields": ("email", "password1", "password2", "first_name", "last_name"),
             },
         ),
     )
 
 
+@admin.register(AnonymousUser)
 class AnonymousUserAdmin(admin.ModelAdmin):
     """Admin for the AnonymousUser model.
 

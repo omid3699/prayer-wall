@@ -10,21 +10,19 @@ class UserSerializer(serializers.ModelSerializer):
         model = User
         fields = (
             "id",
-            "username",
             "email",
             "first_name",
             "last_name",
+            "display_name",
             "created_at",
             "updated_at",
             "is_verified",
         )
-        read_only_fields = ("created_at", "updated_at", "is_verified")
+        read_only_fields = ("email", "created_at", "updated_at", "is_verified")
 
     def get_fields(self):
-        """Override get_fields to make email read-only on update."""
+        """Override get_fields to include admin-only fields."""
         fields = super().get_fields()
-        if self.instance:
-            fields["email"].read_only = True
 
         request = self.context.get("request")
         if request and request.user.is_superuser:
@@ -45,7 +43,6 @@ class UserRegistrationSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
         fields = (
-            "username",
             "email",
             "password",
             "first_name",
@@ -60,10 +57,7 @@ class UserRegistrationSerializer(serializers.ModelSerializer):
 
     def create(self, validated_data):
         password = validated_data.pop("password")
-        user = User(**validated_data)
-        user.set_password(password)
-        user.save()
-        return user
+        return User.objects.create_user(password=password, **validated_data)
 
 
 class AnonymousUserSerializer(serializers.ModelSerializer):
