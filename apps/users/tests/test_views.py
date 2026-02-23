@@ -62,7 +62,7 @@ class TestUserEndpoints:
         user = User.objects.create_user(email="user@example.com", password="pass1234")
         api_client.force_authenticate(user=user)
         response = api_client.patch(
-            reverse("users:update"), {"first_name": "New"}, format="json"
+            reverse("users:me-update"), {"first_name": "New"}, format="json"
         )
         assert response.status_code == 200
         assert response.data["first_name"] == "New"
@@ -96,7 +96,7 @@ class TestUserEndpoints:
     def test_delete_self(self, api_client):
         user = User.objects.create_user(email="user@example.com", password="pass1234")
         api_client.force_authenticate(user=user)
-        response = api_client.delete(reverse("users:delete"))
+        response = api_client.delete(reverse("users:me-delete"))
         assert response.status_code == 204
 
     def test_delete_other_requires_admin(self, api_client):

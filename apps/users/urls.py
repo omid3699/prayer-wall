@@ -24,8 +24,8 @@ urlpatterns = [
     path("verify/resend/", EmailVerificationRequest.as_view(), name="verify-resend"),
     path("verify/confirm/", EmailVerificationConfirm.as_view(), name="verify-confirm"),
     path("me/", UserDetail.as_view(), name="me"),
-    path("update/", UserUpdate.as_view(), name="update"),
-    path("delete/", UserDelete.as_view(), name="delete"),
+    path("me/update/", UserUpdate.as_view(), name="me-update"),
+    path("me/delete/", UserDelete.as_view(), name="me-delete"),
     path("anonymous/", AnonymousUserList.as_view(), name="anonymous-list"),
     path("anonymous/create/", AnonymousUserCreate.as_view(), name="anonymous-create"),
     path(
@@ -37,7 +37,7 @@ urlpatterns = [
         name="anonymous-delete",
     ),
     path("<uuid:id>/", UserDetail.as_view(), name="detail"),
-    path("", UserList.as_view(), name="list"),
     path("<uuid:id>/update/", UserUpdate.as_view(), name="update-by-id"),
     path("<uuid:id>/delete/", UserDelete.as_view(), name="delete-by-id"),
+    path("", UserList.as_view(), name="list"),
 ]
