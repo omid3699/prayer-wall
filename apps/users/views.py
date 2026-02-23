@@ -1,17 +1,19 @@
 from typing import ClassVar
 
 from django.shortcuts import get_object_or_404
-from rest_framework import generics
+from rest_framework import generics, status
 from rest_framework.authtoken.models import Token
 from rest_framework.authtoken.views import ObtainAuthToken
-from rest_framework.exceptions import PermissionDenied
-from rest_framework.permissions import IsAdminUser, IsAuthenticated
+from rest_framework.exceptions import PermissionDenied, ValidationError
+from rest_framework.permissions import AllowAny, IsAdminUser, IsAuthenticated
 from rest_framework.response import Response
 
-from .models import AnonymousUser, User
+from .models import AnonymousUser, EmailVerificationToken, User
 from .serializers import (
     AnonymousUserSerializer,
     EmailAuthTokenSerializer,
+    EmailVerificationConfirmSerializer,
+    EmailVerificationRequestSerializer,
     UserRegistrationSerializer,
     UserSerializer,
 )
@@ -29,8 +31,8 @@ class UserDetail(generics.RetrieveAPIView):
         if not user_id:
             return self.request.user
 
-        if not self.request.user.is_superuser and self.request.user.id != user_id:
-            raise PermissionDenied("You do not have permission to view this user.")
+        if not self.request.user.is_superuser:
+            raise PermissionDenied("Only admins may view other users.")
         return get_object_or_404(User, id=user_id)
 
 
@@ -38,12 +40,7 @@ class UserRegister(generics.CreateAPIView):
     """Create a new user."""
 
     serializer_class = UserRegistrationSerializer
-
-    def perform_create(self, serializer):
-        serializer.save(
-            ip_address=self.request.META.get("REMOTE_ADDR"),
-            user_agent=self.request.META.get("HTTP_USER_AGENT", ""),
-        )
+    throttle_scope = "registration"
 
 
 class UserList(generics.ListAPIView):
@@ -61,13 +58,13 @@ class UserUpdate(generics.UpdateAPIView):
     serializer_class = UserSerializer
 
     def get_object(self):
-        """Return request user, admins may target other users."""
+        """Return request user; only admins may target other users."""
         user_id = self.kwargs.get("id")
         if not user_id:
             return self.request.user
 
-        if not self.request.user.is_superuser and self.request.user.id != user_id:
-            raise PermissionDenied("You do not have permission to update this user.")
+        if not self.request.user.is_superuser:
+            raise PermissionDenied("Only admins may update other users.")
         return get_object_or_404(User, id=user_id)
 
 
@@ -78,13 +75,13 @@ class UserDelete(generics.DestroyAPIView):
     serializer_class = UserSerializer
 
     def get_object(self):
-        """Return request user; admins may delete arbitrary users."""
+        """Return request user; only admins may delete arbitrary users."""
         user_id = self.kwargs.get("id")
         if not user_id:
             return self.request.user
 
-        if not self.request.user.is_superuser and self.request.user.id != user_id:
-            raise PermissionDenied("You do not have permission to delete this user.")
+        if not self.request.user.is_superuser:
+            raise PermissionDenied("Only admins may delete other users.")
         return get_object_or_404(User, id=user_id)
 
 
@@ -92,12 +89,13 @@ class AnonymousUserCreate(generics.CreateAPIView):
     """Create a new anonymous user."""
 
     serializer_class = AnonymousUserSerializer
+    throttle_scope = "anonymous-create"
 
     def perform_create(self, serializer):
-        validated_data = serializer.validated_data
-        validated_data["ip_address"] = self.request.META.get("REMOTE_ADDR")
-        validated_data["user_agent"] = self.request.META.get("HTTP_USER_AGENT", "")
-        serializer.save(**validated_data)
+        serializer.save(
+            ip_address=self.request.META.get("REMOTE_ADDR"),
+            user_agent=self.request.META.get("HTTP_USER_AGENT", ""),
+        )
 
 
 class AnonymousUserList(generics.ListAPIView):
@@ -136,6 +134,7 @@ class EmailObtainAuthToken(ObtainAuthToken):
     """Custom auth token view that works with email-only users."""
 
     serializer_class = EmailAuthTokenSerializer
+    throttle_scope = "login"
 
     def post(self, request, *args, **kwargs):
         serializer = self.serializer_class(
@@ -144,4 +143,73 @@ class EmailObtainAuthToken(ObtainAuthToken):
         serializer.is_valid(raise_exception=True)
         user = serializer.validated_data["user"]
         token, _ = Token.objects.get_or_create(user=user)
-        return Response({"token": token.key})
+        user_data = UserSerializer(user, context={"request": request}).data
+        return Response({"token": token.key, "user": user_data})
+
+
+class EmailVerificationRequest(generics.GenericAPIView):
+    """Request email verification link."""
+
+    permission_classes: ClassVar[list] = [AllowAny]
+    serializer_class = EmailVerificationRequestSerializer
+    throttle_scope = "verification"
+
+    def post(self, request):
+        serializer = self.serializer_class(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        email = serializer.validated_data["email"]
+        user = User.objects.filter(email__iexact=email).first()
+
+        if not user:
+            return Response(
+                {"detail": "If the email exists, a verification link will be sent."},
+                status=status.HTTP_200_OK,
+            )
+
+        if user.is_verified:
+            return Response(
+                {"detail": "This email is already verified."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        token = EmailVerificationToken.create_for_user(user)
+        return Response(
+            {
+                "detail": "Verification link sent.",
+                "token": token.token,
+            },
+            status=status.HTTP_200_OK,
+        )
+
+
+class EmailVerificationConfirm(generics.GenericAPIView):
+    """Confirm email verification."""
+
+    permission_classes: ClassVar[list] = [AllowAny]
+    serializer_class = EmailVerificationConfirmSerializer
+
+    def post(self, request):
+        serializer = self.serializer_class(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        token_value = serializer.validated_data["token"]
+        token = EmailVerificationToken.objects.filter(token=token_value).first()
+
+        if not token:
+            raise ValidationError({"token": "Invalid verification token."})
+
+        if not token.is_valid():
+            raise ValidationError(
+                {"token": "Verification token has expired or been used."}
+            )
+
+        user = token.user
+        user.is_verified = True
+        user.save()
+        token.is_used = True
+        token.save()
+
+        return Response(
+            {"detail": "Email verified successfully."}, status=status.HTTP_200_OK
+        )

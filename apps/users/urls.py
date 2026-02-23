@@ -6,6 +6,8 @@ from .views import (
     AnonymousUserDetail,
     AnonymousUserList,
     EmailObtainAuthToken,
+    EmailVerificationConfirm,
+    EmailVerificationRequest,
     UserDelete,
     UserDetail,
     UserList,
@@ -19,13 +21,11 @@ app_name = "users"
 urlpatterns = [
     path("auth/token/", EmailObtainAuthToken.as_view(), name="api-token-auth"),
     path("register/", UserRegister.as_view(), name="register"),
+    path("verify/resend/", EmailVerificationRequest.as_view(), name="verify-resend"),
+    path("verify/confirm/", EmailVerificationConfirm.as_view(), name="verify-confirm"),
     path("me/", UserDetail.as_view(), name="me"),
-    path("<uuid:id>/", UserDetail.as_view(), name="detail"),
-    path("", UserList.as_view(), name="list"),
     path("update/", UserUpdate.as_view(), name="update"),
-    path("<uuid:id>/update/", UserUpdate.as_view(), name="update-by-id"),
     path("delete/", UserDelete.as_view(), name="delete"),
-    path("<uuid:id>/delete/", UserDelete.as_view(), name="delete-by-id"),
     path("anonymous/", AnonymousUserList.as_view(), name="anonymous-list"),
     path("anonymous/create/", AnonymousUserCreate.as_view(), name="anonymous-create"),
     path(
@@ -36,4 +36,8 @@ urlpatterns = [
         AnonymousUserDelete.as_view(),
         name="anonymous-delete",
     ),
+    path("<uuid:id>/", UserDetail.as_view(), name="detail"),
+    path("", UserList.as_view(), name="list"),
+    path("<uuid:id>/update/", UserUpdate.as_view(), name="update-by-id"),
+    path("<uuid:id>/delete/", UserDelete.as_view(), name="delete-by-id"),
 ]

@@ -4,6 +4,7 @@ import os
 from pathlib import Path
 
 import dj_database_url
+from django.core.exceptions import ImproperlyConfigured
 from dotenv import load_dotenv
 
 
@@ -22,10 +23,13 @@ def env(key, default=None):
 SECRET_KEY = env("SECRET_KEY", "please-change-me")
 DEBUG = env("DEBUG", "0") in ("1", "True", "true")
 
+raw_allowed_hosts = env("DJANGO_ALLOWED_HOSTS")
+settings_module = os.getenv("DJANGO_SETTINGS_MODULE", "")
+if not DEBUG and not raw_allowed_hosts and not settings_module.endswith(".test"):
+    raise ImproperlyConfigured("DJANGO_ALLOWED_HOSTS must be set in production.")
+
 ALLOWED_HOSTS = [
-    h.strip()
-    for h in (env("DJANGO_ALLOWED_HOSTS") or "localhost").split(",")
-    if h.strip()
+    h.strip() for h in (raw_allowed_hosts or "localhost").split(",") if h.strip()
 ]
 
 # Application definition
@@ -46,6 +50,7 @@ EXTERNAL_APPS = [
 
 # Local apps for this project (add your app names here)
 LOCAL_APPS = [
+    "apps.core",
     "apps.users",
 ]
 
@@ -69,6 +74,23 @@ REST_FRAMEWORK = {
         "rest_framework.authentication.TokenAuthentication",
         "rest_framework.authentication.SessionAuthentication",
     ],
+    "DEFAULT_RENDERER_CLASSES": [
+        "rest_framework.renderers.JSONRenderer",
+    ],
+    "DEFAULT_THROTTLE_CLASSES": [
+        "rest_framework.throttling.UserRateThrottle",
+        "rest_framework.throttling.AnonRateThrottle",
+        "rest_framework.throttling.ScopedRateThrottle",
+    ],
+    "DEFAULT_THROTTLE_RATES": {
+        "user": "1000/day",
+        "anon": "100/day",
+        "login": "10/min",
+        "registration": "20/hour",
+        "anonymous-create": "50/day",
+    },
+    "DEFAULT_PAGINATION_CLASS": "rest_framework.pagination.PageNumberPagination",
+    "PAGE_SIZE": 20,
 }
 
 SPECTACULAR_SETTINGS = {

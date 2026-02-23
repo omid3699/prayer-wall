@@ -19,21 +19,27 @@ class UserSerializer(serializers.ModelSerializer):
             "created_at",
             "updated_at",
             "is_verified",
+            "ip_address",
+            "user_agent",
+            "is_blocked",
         )
-        read_only_fields = ("email", "created_at", "updated_at", "is_verified")
+        read_only_fields = (
+            "email",
+            "created_at",
+            "updated_at",
+            "is_verified",
+            "ip_address",
+            "user_agent",
+        )
 
     def get_fields(self):
-        """Override get_fields to include admin-only fields."""
+        """Override get_fields to hide admin-only fields from non-admin users."""
         fields = super().get_fields()
 
         request = self.context.get("request")
-        if request and request.user.is_superuser:
-            admin_fields = {
-                "ip_address": serializers.ReadOnlyField(),
-                "user_agent": serializers.ReadOnlyField(),
-                "is_blocked": serializers.BooleanField(required=False),
-            }
-            fields.update(admin_fields)
+        if request and not request.user.is_superuser:
+            for field in ("ip_address", "user_agent", "is_blocked"):
+                fields.pop(field)
         return fields
 
 
@@ -53,13 +59,22 @@ class UserRegistrationSerializer(serializers.ModelSerializer):
 
     def validate_email(self, value):
         """Ensure email uniqueness in a case-insensitive manner."""
-        if User.objects.filter(email__iexact=value).exists():
+        normalized = User.objects.normalize_email(value)
+        if User.objects.filter(email__iexact=normalized).exists():
             raise serializers.ValidationError("A user with this email already exists.")
-        return value
+        return normalized
 
     def create(self, validated_data):
+        request = self.context.get("request")
         password = validated_data.pop("password")
-        return User.objects.create_user(password=password, **validated_data)
+        ip_address = request.META.get("REMOTE_ADDR") if request else None
+        user_agent = request.META.get("HTTP_USER_AGENT", "") if request else ""
+        return User.objects.create_user(
+            password=password,
+            ip_address=ip_address,
+            user_agent=user_agent,
+            **validated_data,
+        )
 
 
 class AnonymousUserSerializer(serializers.ModelSerializer):
@@ -71,19 +86,18 @@ class AnonymousUserSerializer(serializers.ModelSerializer):
             "id",
             "display_name",
             "created_at",
+            "ip_address",
+            "user_agent",
+            "is_blocked",
         )
+        read_only_fields = ("ip_address", "user_agent")
 
     def get_fields(self):
         """Override get_fields to include all fields for superusers."""
         fields = super().get_fields()
         request = self.context.get("request")
-        if request and request.user.is_superuser:
-            admin_fields = {
-                "ip_address": serializers.CharField(read_only=True),
-                "user_agent": serializers.CharField(read_only=True),
-                "is_blocked": serializers.BooleanField(required=False),
-            }
-            fields.update(admin_fields)
+        if request and not request.user.is_superuser:
+            fields.pop("is_blocked")
         return fields
 
 
@@ -116,5 +130,25 @@ class EmailAuthTokenSerializer(serializers.Serializer):
             msg = _("Unable to log in with provided credentials.")
             raise serializers.ValidationError(msg, code="authorization")
 
+        if user.is_blocked:
+            msg = _("Your account has been blocked.")
+            raise serializers.ValidationError(msg, code="authorization")
+
+        if not user.is_verified:
+            msg = _("Please verify your email before logging in.")
+            raise serializers.ValidationError(msg, code="authorization")
+
         attrs["user"] = user
         return attrs
+
+
+class EmailVerificationRequestSerializer(serializers.Serializer):
+    """Serializer to request email verification."""
+
+    email = serializers.EmailField(label=_("Email"))
+
+
+class EmailVerificationConfirmSerializer(serializers.Serializer):
+    """Serializer to confirm email verification."""
+
+    token = serializers.CharField(label=_("Token"))

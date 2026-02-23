@@ -17,6 +17,8 @@ class TestAuthTokenEndpoint:
     def test_obtain_token_with_email_credentials(self, api_client):
         password = "pass1234"
         user = User.objects.create_user(email="user@example.com", password=password)
+        user.is_verified = True
+        user.save()
 
         response = api_client.post(
             reverse("users:api-token-auth"),
@@ -27,6 +29,7 @@ class TestAuthTokenEndpoint:
         assert response.status_code == 200
         assert "token" in response.data
         assert response.data["token"]
+        assert response.data["user"]["email"] == user.email
 
     def test_invalid_credentials_return_error(self, api_client):
         response = api_client.post(
@@ -40,6 +43,7 @@ class TestAuthTokenEndpoint:
             "Unable to log in with provided credentials."
             in response.data["non_field_errors"][0]
         )
+        assert "token" not in response.data
 
     def test_missing_fields_returns_error(self, api_client):
         response = api_client.post(reverse("users:api-token-auth"), {}, format="json")

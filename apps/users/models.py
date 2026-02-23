@@ -1,8 +1,11 @@
+import secrets
+from datetime import timedelta
 from typing import ClassVar
 
 from django.contrib.auth.base_user import BaseUserManager
 from django.contrib.auth.models import AbstractUser
 from django.db import models
+from django.utils import timezone
 
 from apps.core.models import BaseModel
 
@@ -64,11 +67,39 @@ class User(BaseModel, AbstractUser):
 class AnonymousUser(BaseModel):
     """Model to represent anonymous users with IP and user agent information."""
 
-    display_name = models.CharField(max_length=255, default="Anonymous User")
+    display_name = models.CharField(max_length=255, blank=True, default="")
     ip_address = models.GenericIPAddressField(null=True, blank=True)
     user_agent = models.CharField(max_length=255, blank=True)
     is_blocked = models.BooleanField(default=False)
 
     def __str__(self) -> str:
         """Return the IP address as string representation."""
-        return self.ip_address or self.display_name
+        return self.ip_address or self.display_name or "Anonymous User"
+
+
+class EmailVerificationToken(BaseModel):
+    """Token for email verification."""
+
+    user = models.ForeignKey(
+        User, on_delete=models.CASCADE, related_name="verification_tokens"
+    )
+    token = models.CharField(max_length=64, unique=True)
+    expires_at = models.DateTimeField()
+    is_used = models.BooleanField(default=False)
+
+    @classmethod
+    def generate_token(cls) -> str:
+        return secrets.token_urlsafe(32)
+
+    @classmethod
+    def create_for_user(
+        cls, user: User, expires_in_hours: int = 24
+    ) -> "EmailVerificationToken":
+        return cls.objects.create(
+            user=user,
+            token=cls.generate_token(),
+            expires_at=timezone.now() + timedelta(hours=expires_in_hours),
+        )
+
+    def is_valid(self) -> bool:
+        return not self.is_used and self.expires_at > timezone.now()
