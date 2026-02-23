@@ -45,6 +45,67 @@ class TestPrayerRequestListView:
         assert response.status_code == status.HTTP_200_OK
         assert len(response.data["results"]) == 0
 
+    def test_search_by_description(self, api_client):
+        user = User.objects.create_user(email="user@example.com", password="pass1234")
+        PrayerRequest.objects.create(
+            user=user, description="Pray for health", is_approved=True, is_public=True
+        )
+        PrayerRequest.objects.create(
+            user=user, description="Pray for peace", is_approved=True, is_public=True
+        )
+        PrayerRequest.objects.create(
+            user=user, description="Thank you Lord", is_approved=True, is_public=True
+        )
+
+        response = api_client.get(reverse("prayers:list"), {"search": "health"})
+
+        assert response.status_code == status.HTTP_200_OK
+        assert len(response.data["results"]) == 1
+        assert response.data["results"][0]["description"] == "Pray for health"
+
+    def test_search_no_results(self, api_client):
+        user = User.objects.create_user(email="user@example.com", password="pass1234")
+        PrayerRequest.objects.create(
+            user=user, description="Pray for health", is_approved=True, is_public=True
+        )
+
+        response = api_client.get(reverse("prayers:list"), {"search": "nonexistent"})
+
+        assert response.status_code == status.HTTP_200_OK
+        assert len(response.data["results"]) == 0
+
+    def test_ordering_by_created_at_ascending(self, api_client):
+        user = User.objects.create_user(email="user@example.com", password="pass1234")
+        prayer1 = PrayerRequest.objects.create(
+            user=user, description="First prayer", is_approved=True, is_public=True
+        )
+        prayer2 = PrayerRequest.objects.create(
+            user=user, description="Second prayer", is_approved=True, is_public=True
+        )
+
+        response = api_client.get(reverse("prayers:list"), {"ordering": "created_at"})
+
+        assert response.status_code == status.HTTP_200_OK
+        assert len(response.data["results"]) == 2
+        assert response.data["results"][0]["description"] == "First prayer"
+        assert response.data["results"][1]["description"] == "Second prayer"
+
+    def test_ordering_by_created_at_descending(self, api_client):
+        user = User.objects.create_user(email="user@example.com", password="pass1234")
+        prayer1 = PrayerRequest.objects.create(
+            user=user, description="First prayer", is_approved=True, is_public=True
+        )
+        prayer2 = PrayerRequest.objects.create(
+            user=user, description="Second prayer", is_approved=True, is_public=True
+        )
+
+        response = api_client.get(reverse("prayers:list"), {"ordering": "-created_at"})
+
+        assert response.status_code == status.HTTP_200_OK
+        assert len(response.data["results"]) == 2
+        assert response.data["results"][0]["description"] == "Second prayer"
+        assert response.data["results"][1]["description"] == "First prayer"
+
 
 @pytest.mark.django_db
 class TestPrayerRequestCreateView:
