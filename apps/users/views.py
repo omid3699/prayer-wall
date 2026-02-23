@@ -9,9 +9,11 @@ from rest_framework.pagination import PageNumberPagination
 from rest_framework.permissions import AllowAny, IsAdminUser, IsAuthenticated
 from rest_framework.response import Response
 
-from .models import AnonymousUser, EmailVerificationToken, User
+from .models import AnonymousToken, AnonymousUser, EmailVerificationToken, User
 from .serializers import (
+    AnonymousTokenSerializer,
     AnonymousUserSerializer,
+    AnonymousUserWithTokenSerializer,
     EmailAuthTokenSerializer,
     EmailVerificationConfirmSerializer,
     EmailVerificationRequestSerializer,
@@ -93,11 +95,25 @@ class AnonymousUserCreate(generics.CreateAPIView):
     serializer_class = AnonymousUserSerializer
     throttle_scope = "anonymous-create"
 
-    def perform_create(self, serializer):
-        serializer.save(
+    def create(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        instance = serializer.save(
             ip_address=self.request.META.get("REMOTE_ADDR"),
             user_agent=self.request.META.get("HTTP_USER_AGENT", ""),
         )
+
+        token = AnonymousToken.create_for_anonymous_user(instance)
+
+        response_data = AnonymousUserWithTokenSerializer(
+            instance, context={"request": request}
+        ).data
+        response_data["token"] = token.token
+        response_data["token_expires_at"] = token.expires_at
+
+        headers = self.get_success_headers(serializer.data)
+        return Response(response_data, status=status.HTTP_201_CREATED, headers=headers)
 
 
 class AnonymousUserList(generics.ListAPIView):
@@ -216,3 +232,40 @@ class EmailVerificationConfirm(generics.GenericAPIView):
         return Response(
             {"detail": "Email verified successfully."}, status=status.HTTP_200_OK
         )
+
+
+class AnonymousTokenView(generics.CreateAPIView):
+    """Get or create token for anonymous user based on IP/user-agent."""
+
+    permission_classes: ClassVar[list] = [AllowAny]
+    serializer_class = AnonymousTokenSerializer
+    throttle_scope = "anonymous-create"
+
+    def create(self, request, *args, **kwargs):
+        ip_address = request.META.get("REMOTE_ADDR")
+        user_agent = request.META.get("HTTP_USER_AGENT", "")
+
+        if not ip_address:
+            raise ValidationError({"ip_address": "IP address is required."})
+
+        anon_user, _ = AnonymousUser.objects.get_or_create(
+            ip_address=ip_address,
+            user_agent=user_agent,
+        )
+
+        if anon_user.is_blocked:
+            raise PermissionDenied(
+                "Your IP address has been blocked. Please contact support."
+            )
+
+        existing_token = AnonymousToken.objects.filter(
+            anonymous_user=anon_user, is_active=True
+        ).first()
+
+        if existing_token and existing_token.is_valid():
+            serializer = AnonymousTokenSerializer(existing_token)
+            return Response(serializer.data, status=status.HTTP_200_OK)
+
+        new_token = AnonymousToken.create_for_anonymous_user(anon_user)
+        serializer = AnonymousTokenSerializer(new_token)
+        return Response(serializer.data, status=status.HTTP_201_CREATED)

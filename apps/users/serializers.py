@@ -2,7 +2,7 @@ from django.contrib.auth import authenticate
 from django.utils.translation import gettext_lazy as _
 from rest_framework import serializers
 
-from .models import AnonymousUser, User
+from .models import AnonymousToken, AnonymousUser, User
 
 
 class UserSerializer(serializers.ModelSerializer):
@@ -151,3 +151,68 @@ class EmailVerificationConfirmSerializer(serializers.Serializer):
     """Serializer to confirm email verification."""
 
     token = serializers.CharField(label=_("Token"))
+
+
+class AnonymousTokenSerializer(serializers.ModelSerializer):
+    """Serializer for the AnonymousToken model."""
+
+    class Meta:
+        model = AnonymousToken
+        fields = (
+            "token",
+            "expires_at",
+            "is_active",
+            "created_at",
+        )
+        read_only_fields = (
+            "token",
+            "expires_at",
+            "is_active",
+            "created_at",
+        )
+
+
+class AnonymousUserWithTokenSerializer(serializers.ModelSerializer):
+    """Serializer for AnonymousUser with token."""
+
+    token = serializers.SerializerMethodField()
+
+    class Meta:
+        model = AnonymousUser
+        fields = (
+            "id",
+            "display_name",
+            "created_at",
+            "ip_address",
+            "user_agent",
+            "is_blocked",
+            "token",
+        )
+        read_only_fields = ("ip_address", "user_agent")
+
+    def get_fields(self):
+        """Override get_fields to hide admin-only fields from non-admin users."""
+        fields = super().get_fields()
+        request = self.context.get("request")
+        if request and not request.user.is_superuser:
+            fields.pop("is_blocked")
+        return fields
+
+    def get_token(self, obj):
+        request = self.context.get("request")
+        if request:
+            anon_user = self._get_anonymous_user(request)
+            if anon_user and anon_user.id == obj.id:
+                token = AnonymousToken.objects.filter(
+                    anonymous_user=obj, is_active=True
+                ).first()
+                if token and token.is_valid():
+                    return token.token
+        return None
+
+    def _get_anonymous_user(self, request):
+        ip_address = request.META.get("REMOTE_ADDR")
+        user_agent = request.META.get("HTTP_USER_AGENT", "")
+        return AnonymousUser.objects.filter(
+            ip_address=ip_address, user_agent=user_agent
+        ).first()

@@ -1,6 +1,7 @@
 from django.urls import path
 
 from .views import (
+    AnonymousTokenView,
     AnonymousUserCreate,
     AnonymousUserDelete,
     AnonymousUserDetail,
@@ -28,6 +29,7 @@ urlpatterns = [
     path("me/delete/", UserDelete.as_view(), name="me-delete"),
     path("anonymous/", AnonymousUserList.as_view(), name="anonymous-list"),
     path("anonymous/create/", AnonymousUserCreate.as_view(), name="anonymous-create"),
+    path("anonymous/token/", AnonymousTokenView.as_view(), name="anonymous-token"),
     path(
         "anonymous/<uuid:id>/", AnonymousUserDetail.as_view(), name="anonymous-detail"
     ),

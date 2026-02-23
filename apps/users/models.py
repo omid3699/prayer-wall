@@ -103,3 +103,38 @@ class EmailVerificationToken(BaseModel):
 
     def is_valid(self) -> bool:
         return not self.is_used and self.expires_at > timezone.now()
+
+
+class AnonymousToken(BaseModel):
+    """Token for anonymous user authentication."""
+
+    token = models.CharField(max_length=64, unique=True)
+    anonymous_user = models.ForeignKey(
+        AnonymousUser, on_delete=models.CASCADE, related_name="tokens"
+    )
+    expires_at = models.DateTimeField()
+    is_active = models.BooleanField(default=True)
+
+    class Meta:
+        ordering: ClassVar[list] = ["-created_at"]
+
+    @classmethod
+    def generate_token(cls) -> str:
+        return secrets.token_urlsafe(32)
+
+    @classmethod
+    def create_for_anonymous_user(
+        cls, anonymous_user: AnonymousUser, expires_in_days: int = 30
+    ) -> "AnonymousToken":
+        return cls.objects.create(
+            anonymous_user=anonymous_user,
+            token=cls.generate_token(),
+            expires_at=timezone.now() + timedelta(days=expires_in_days),
+        )
+
+    def is_valid(self) -> bool:
+        return self.is_active and self.expires_at > timezone.now()
+
+    def __str__(self) -> str:
+        """Return string representation of the token."""
+        return f"Token for {self.anonymous_user}"
