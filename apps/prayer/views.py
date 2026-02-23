@@ -37,7 +37,6 @@ class PrayerRequestCreate(generics.CreateAPIView):
 
     permission_classes: ClassVar[list] = [AllowAny]
     serializer_class = PrayerRequestCreateSerializer
-    throttle_scope = "prayer-request-create"
 
     def perform_create(self, serializer):
         if self.request.user.is_authenticated:
@@ -69,6 +68,7 @@ class PrayerRequestDetail(generics.RetrieveAPIView):
     permission_classes: ClassVar[list] = [AllowAny]
     serializer_class = PrayerRequestSerializer
     queryset = PrayerRequest.objects.all()
+    lookup_field = "id"
 
     def get_object(self):
         obj = super().get_object()
@@ -96,6 +96,7 @@ class PrayerRequestUpdate(generics.UpdateAPIView):
     permission_classes: ClassVar[list] = [IsAuthenticated]
     serializer_class = PrayerRequestSerializer
     queryset = PrayerRequest.objects.all()
+    lookup_field = "id"
 
     def get_object(self):
         obj = super().get_object()
@@ -115,6 +116,7 @@ class PrayerRequestDelete(generics.DestroyAPIView):
     permission_classes: ClassVar[list] = [IsAuthenticated]
     serializer_class = PrayerRequestSerializer
     queryset = PrayerRequest.objects.all()
+    lookup_field = "id"
 
     def get_object(self):
         obj = super().get_object()
@@ -134,6 +136,7 @@ class PrayerRequestApprove(generics.UpdateAPIView):
     permission_classes: ClassVar[list] = [IsAuthenticated, IsAdminUser]
     serializer_class = PrayerRequestSerializer
     queryset = PrayerRequest.objects.all()
+    lookup_field = "id"
 
     def update(self, request, *args, **kwargs):
         instance = self.get_object()
@@ -165,7 +168,6 @@ class PrayerCreate(generics.CreateAPIView):
 
     permission_classes: ClassVar[list] = [AllowAny]
     serializer_class = PrayerCreateSerializer
-    throttle_scope = "prayer-create"
 
     def perform_create(self, serializer):
         prayer_request = get_object_or_404(
@@ -212,6 +214,7 @@ class PrayerDelete(generics.DestroyAPIView):
 
     permission_classes: ClassVar[list] = [IsAuthenticated]
     serializer_class = PrayerSerializer
+    lookup_field = "id"
 
     def get_queryset(self):
         return Prayer.objects.all()
