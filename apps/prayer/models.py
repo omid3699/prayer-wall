@@ -1,3 +1,5 @@
+from typing import ClassVar
+
 from django.core.exceptions import ValidationError
 from django.db import models
 
@@ -64,4 +66,61 @@ class PrayerRequest(BaseModel):
     @property
     def is_registered(self) -> bool:
         """Return True if this request was made by a registered user."""
+        return self.user is not None
+
+
+class Prayer(BaseModel):
+    """Model representing a prayer for a prayer request."""
+
+    user = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        related_name="prayers",
+    )
+    anonymous_user = models.ForeignKey(
+        AnonymousUser,
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        related_name="prayers",
+    )
+    prayer_request = models.ForeignKey(
+        PrayerRequest,
+        on_delete=models.CASCADE,
+        related_name="prayers",
+    )
+
+    class Meta:
+        constraints: ClassVar[list] = [
+            models.UniqueConstraint(
+                fields=["user", "prayer_request"],
+                name="unique_user_prayer",
+            ),
+            models.UniqueConstraint(
+                fields=["anonymous_user", "prayer_request"],
+                name="unique_anon_prayer",
+            ),
+        ]
+
+    def clean(self):
+        if not bool(self.user) ^ bool(self.anonymous_user):
+            raise ValidationError(
+                "Prayer must have either a user or anonymous user, not both and not neither."
+            )
+
+    @property
+    def prayer(self):
+        """Return the user or anonymous user who prayed."""
+        return self.user or self.anonymous_user
+
+    @property
+    def is_anonymous(self) -> bool:
+        """Return True if this prayer was made by an anonymous user."""
+        return self.anonymous_user is not None
+
+    @property
+    def is_registered(self) -> bool:
+        """Return True if this prayer was made by a registered user."""
         return self.user is not None
