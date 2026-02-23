@@ -15,7 +15,6 @@ class UserSerializer(serializers.ModelSerializer):
             "email",
             "first_name",
             "last_name",
-            "display_name",
             "created_at",
             "updated_at",
             "is_verified",
