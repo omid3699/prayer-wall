@@ -52,6 +52,7 @@ EXTERNAL_APPS = [
 LOCAL_APPS = [
     "apps.core",
     "apps.users",
+    "apps.prayer",
 ]
 
 INSTALLED_APPS = [*DJANGO_APPS, *EXTERNAL_APPS, *LOCAL_APPS]
