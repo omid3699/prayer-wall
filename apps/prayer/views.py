@@ -3,6 +3,7 @@ from typing import ClassVar
 from django.shortcuts import get_object_or_404
 from rest_framework import generics
 from rest_framework.exceptions import PermissionDenied, ValidationError
+from rest_framework.filters import SearchFilter, OrderingFilter
 from rest_framework.pagination import PageNumberPagination
 from rest_framework.permissions import AllowAny, IsAdminUser, IsAuthenticated
 from rest_framework.response import Response
@@ -24,12 +25,16 @@ class PrayerRequestList(generics.ListAPIView):
     permission_classes: ClassVar[list] = [AllowAny]
     serializer_class = PrayerRequestSerializer
     pagination_class = PageNumberPagination
+    filter_backends = [SearchFilter, OrderingFilter]
+    search_fields = ["description"]
+    ordering_fields = ["created_at", "updated_at"]
+    ordering = ["-created_at"]
 
     def get_queryset(self):
         return PrayerRequest.objects.filter(
             is_approved=True,
             is_public=True,
-        ).order_by("-created_at")
+        )
 
 
 class PrayerRequestCreate(generics.CreateAPIView):
