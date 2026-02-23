@@ -46,6 +46,7 @@ EXTERNAL_APPS = [
     "rest_framework",
     "rest_framework.authtoken",
     "drf_spectacular",
+    "django_filters",
 ]
 
 # Local apps for this project (add your app names here)

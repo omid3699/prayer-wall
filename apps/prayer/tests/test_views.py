@@ -5,7 +5,6 @@ from rest_framework import status
 from rest_framework.test import APIClient
 
 from apps.prayer.models import Prayer, PrayerRequest
-from apps.users.models import AnonymousUser
 
 
 User = get_user_model()
@@ -33,7 +32,10 @@ class TestPrayerRequestListView:
             is_public=True,
         )
 
-        response = api_client.get(reverse("prayers:list"))
+        response = api_client.get(
+            reverse("prayers:list"),
+            {"is_approved": "true", "is_public": "true"},
+        )
 
         assert response.status_code == status.HTTP_200_OK
         assert len(response.data["results"]) == 1
@@ -76,10 +78,10 @@ class TestPrayerRequestListView:
 
     def test_ordering_by_created_at_ascending(self, api_client):
         user = User.objects.create_user(email="user@example.com", password="pass1234")
-        prayer1 = PrayerRequest.objects.create(
+        PrayerRequest.objects.create(
             user=user, description="First prayer", is_approved=True, is_public=True
         )
-        prayer2 = PrayerRequest.objects.create(
+        PrayerRequest.objects.create(
             user=user, description="Second prayer", is_approved=True, is_public=True
         )
 
@@ -92,10 +94,10 @@ class TestPrayerRequestListView:
 
     def test_ordering_by_created_at_descending(self, api_client):
         user = User.objects.create_user(email="user@example.com", password="pass1234")
-        prayer1 = PrayerRequest.objects.create(
+        PrayerRequest.objects.create(
             user=user, description="First prayer", is_approved=True, is_public=True
         )
-        prayer2 = PrayerRequest.objects.create(
+        PrayerRequest.objects.create(
             user=user, description="Second prayer", is_approved=True, is_public=True
         )
 
@@ -105,6 +107,60 @@ class TestPrayerRequestListView:
         assert len(response.data["results"]) == 2
         assert response.data["results"][0]["description"] == "Second prayer"
         assert response.data["results"][1]["description"] == "First prayer"
+
+    def test_filter_by_is_approved_true(self, api_client):
+        user = User.objects.create_user(email="user@example.com", password="pass1234")
+        PrayerRequest.objects.create(
+            user=user, description="Approved", is_approved=True, is_public=True
+        )
+        PrayerRequest.objects.create(
+            user=user, description="Not approved", is_approved=False, is_public=True
+        )
+
+        response = api_client.get(reverse("prayers:list"), {"is_approved": "true"})
+
+        assert response.status_code == status.HTTP_200_OK
+        assert len(response.data["results"]) == 1
+        assert response.data["results"][0]["description"] == "Approved"
+
+    def test_filter_by_is_public_true(self, api_client):
+        user = User.objects.create_user(email="user@example.com", password="pass1234")
+        PrayerRequest.objects.create(
+            user=user, description="Public", is_approved=True, is_public=True
+        )
+        PrayerRequest.objects.create(
+            user=user, description="Private", is_approved=True, is_public=False
+        )
+
+        response = api_client.get(reverse("prayers:list"), {"is_public": "true"})
+
+        assert response.status_code == status.HTTP_200_OK
+        assert len(response.data["results"]) == 1
+        assert response.data["results"][0]["description"] == "Public"
+
+    def test_filter_combined(self, api_client):
+        user = User.objects.create_user(email="user@example.com", password="pass1234")
+        PrayerRequest.objects.create(
+            user=user, description="Approved public", is_approved=True, is_public=True
+        )
+        PrayerRequest.objects.create(
+            user=user, description="Approved private", is_approved=True, is_public=False
+        )
+        PrayerRequest.objects.create(
+            user=user,
+            description="Not approved public",
+            is_approved=False,
+            is_public=True,
+        )
+
+        response = api_client.get(
+            reverse("prayers:list"),
+            {"is_approved": "true", "is_public": "true"},
+        )
+
+        assert response.status_code == status.HTTP_200_OK
+        assert len(response.data["results"]) == 1
+        assert response.data["results"][0]["description"] == "Approved public"
 
 
 @pytest.mark.django_db
