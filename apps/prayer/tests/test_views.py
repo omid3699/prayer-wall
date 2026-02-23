@@ -442,3 +442,56 @@ class TestPrayerDeleteView:
         )
 
         assert response.status_code == status.HTTP_403_FORBIDDEN
+
+
+@pytest.mark.django_db
+class TestMyPrayerRequestsListView:
+    def test_list_own_requests(self, api_client):
+        user = User.objects.create_user(email="user@example.com", password="pass1234")
+        api_client.force_authenticate(user=user)
+        PrayerRequest.objects.create(
+            user=user, description="My prayer 1", is_approved=True
+        )
+        PrayerRequest.objects.create(
+            user=user, description="My prayer 2", is_approved=False
+        )
+        other = User.objects.create_user(email="other@example.com", password="pass1234")
+        PrayerRequest.objects.create(
+            user=other, description="Other prayer", is_approved=True
+        )
+
+        response = api_client.get(reverse("prayers:my-requests"))
+
+        assert response.status_code == status.HTTP_200_OK
+        assert len(response.data["results"]) == 2
+
+    def test_requires_authentication(self, api_client):
+        response = api_client.get(reverse("prayers:my-requests"))
+
+        assert response.status_code == status.HTTP_401_UNAUTHORIZED
+
+
+@pytest.mark.django_db
+class TestMyPrayersListView:
+    def test_list_own_prayers(self, api_client):
+        user = User.objects.create_user(email="user@example.com", password="pass1234")
+        api_client.force_authenticate(user=user)
+        prayer_request = PrayerRequest.objects.create(
+            user=user, description="Prayer request", is_approved=True
+        )
+        Prayer.objects.create(user=user, prayer_request=prayer_request)
+        other = User.objects.create_user(email="other@example.com", password="pass1234")
+        other_request = PrayerRequest.objects.create(
+            user=other, description="Other request", is_approved=True
+        )
+        Prayer.objects.create(user=other, prayer_request=other_request)
+
+        response = api_client.get(reverse("prayers:my-prayers"))
+
+        assert response.status_code == status.HTTP_200_OK
+        assert len(response.data["results"]) == 1
+
+    def test_requires_authentication(self, api_client):
+        response = api_client.get(reverse("prayers:my-prayers"))
+
+        assert response.status_code == status.HTTP_401_UNAUTHORIZED

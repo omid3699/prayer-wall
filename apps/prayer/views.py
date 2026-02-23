@@ -237,3 +237,27 @@ class PrayerDelete(generics.DestroyAPIView):
         if self.request.user.is_superuser:
             return True
         return obj.user == self.request.user
+
+
+class MyPrayerRequestsList(generics.ListAPIView):
+    """List current user's prayer requests."""
+
+    permission_classes: ClassVar[list] = [IsAuthenticated]
+    serializer_class = PrayerRequestSerializer
+    pagination_class = PageNumberPagination
+
+    def get_queryset(self):
+        return PrayerRequest.objects.filter(user=self.request.user).order_by(
+            "-created_at"
+        )
+
+
+class MyPrayersList(generics.ListAPIView):
+    """List prayers made by current user."""
+
+    permission_classes: ClassVar[list] = [IsAuthenticated]
+    serializer_class = PrayerSerializer
+    pagination_class = PageNumberPagination
+
+    def get_queryset(self):
+        return Prayer.objects.filter(user=self.request.user).order_by("-created_at")
