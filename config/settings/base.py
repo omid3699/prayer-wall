@@ -89,6 +89,8 @@ REST_FRAMEWORK = {
         "login": "10/min",
         "registration": "20/hour",
         "anonymous-create": "50/day",
+        "prayer-request-create": "30/day",
+        "prayer-create": "100/day",
     },
     "DEFAULT_PAGINATION_CLASS": "rest_framework.pagination.PageNumberPagination",
     "PAGE_SIZE": 20,
