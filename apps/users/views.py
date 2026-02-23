@@ -5,6 +5,7 @@ from rest_framework import generics, status
 from rest_framework.authtoken.models import Token
 from rest_framework.authtoken.views import ObtainAuthToken
 from rest_framework.exceptions import PermissionDenied, ValidationError
+from rest_framework.pagination import PageNumberPagination
 from rest_framework.permissions import AllowAny, IsAdminUser, IsAuthenticated
 from rest_framework.response import Response
 
@@ -49,6 +50,7 @@ class UserList(generics.ListAPIView):
     permission_classes: ClassVar[list] = [IsAuthenticated, IsAdminUser]
     queryset = User.objects.all()
     serializer_class = UserSerializer
+    pagination_class = PageNumberPagination
 
 
 class UserUpdate(generics.UpdateAPIView):
@@ -104,6 +106,7 @@ class AnonymousUserList(generics.ListAPIView):
     permission_classes: ClassVar[list] = [IsAuthenticated, IsAdminUser]
     queryset = AnonymousUser.objects.all()
     serializer_class = AnonymousUserSerializer
+    pagination_class = PageNumberPagination
 
 
 class AnonymousUserDelete(generics.DestroyAPIView):
