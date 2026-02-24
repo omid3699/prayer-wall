@@ -200,19 +200,15 @@ class AnonymousUserWithTokenSerializer(serializers.ModelSerializer):
 
     def get_token(self, obj):
         request = self.context.get("request")
-        if request:
-            anon_user = self._get_anonymous_user(request)
-            if anon_user and anon_user.id == obj.id:
-                token = AnonymousToken.objects.filter(
-                    anonymous_user=obj, is_active=True
-                ).first()
-                if token and token.is_valid():
-                    return token.token
-        return None
+        if not request:
+            return None
 
-    def _get_anonymous_user(self, request):
-        ip_address = request.META.get("REMOTE_ADDR")
-        user_agent = request.META.get("HTTP_USER_AGENT", "")
-        return AnonymousUser.objects.filter(
-            ip_address=ip_address, user_agent=user_agent
-        ).first()
+        auth = getattr(request, "auth", None)
+        if (
+            auth
+            and hasattr(auth, "anonymous_user")
+            and auth.anonymous_user.id == obj.id
+        ):
+            return auth.token.token
+
+        return None

@@ -3,7 +3,7 @@ from django.contrib.auth import get_user_model
 from django.urls import reverse
 from rest_framework.test import APIClient
 
-from apps.users.models import AnonymousUser
+from apps.users.models import AnonymousToken, AnonymousUser
 
 
 User = get_user_model()
@@ -16,21 +16,18 @@ def api_client():
 
 @pytest.mark.django_db
 class TestAnonymousUserEndpoints:
-    def test_create_anonymous_user(self, api_client):
+    def test_create_anonymous_user_mints_token(self, api_client):
         response = api_client.post(
             reverse("users:anonymous-create"),
             {
                 "display_name": "Guest",
-                "ip_address": "1.2.3.4",
-                "is_blocked": True,
             },
             format="json",
         )
         assert response.status_code == 201
         assert response.data["display_name"] == "Guest"
-        assert "is_blocked" not in response.data
-        anon = AnonymousUser.objects.get(id=response.data["id"])
-        assert anon.ip_address != "1.2.3.4"
+        assert "token" in response.data
+        assert response.data["token"]
 
     def test_list_requires_admin(self, api_client):
         user = User.objects.create_user(email="user@example.com", password="pass1234")
@@ -48,6 +45,19 @@ class TestAnonymousUserEndpoints:
         results = response.data.get("results", response.data)
         assert results[0]["id"] == str(anon.id)
         assert "is_blocked" in results[0]
+
+    def test_anonymous_token_view_requires_header(self, api_client):
+        response = api_client.post(reverse("users:anonymous-token"), {}, format="json")
+        assert response.status_code == 403
+
+    def test_anonymous_token_view_returns_token_info(self, api_client):
+        anon_user = AnonymousUser.objects.create(display_name="Guest")
+        token = AnonymousToken.create_for_anonymous_user(anon_user)
+        api_client.credentials(HTTP_AUTHORIZATION=f"Token {token.token}")
+
+        response = api_client.post(reverse("users:anonymous-token"), {}, format="json")
+        assert response.status_code == 200
+        assert response.data["token"] == token.token
 
     def test_delete_requires_admin(self, api_client):
         anon = AnonymousUser.objects.create(display_name="Guest")

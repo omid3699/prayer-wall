@@ -90,7 +90,7 @@ class UserDelete(generics.DestroyAPIView):
 
 
 class AnonymousUserCreate(generics.CreateAPIView):
-    """Create a new anonymous user."""
+    """Create a new anonymous user and mint a token."""
 
     serializer_class = AnonymousUserSerializer
     throttle_scope = "anonymous-create"
@@ -231,38 +231,27 @@ class EmailVerificationConfirm(generics.GenericAPIView):
         )
 
 
-class AnonymousTokenView(generics.CreateAPIView):
-    """Get or create token for anonymous user based on IP/user-agent."""
+class AnonymousTokenView(generics.GenericAPIView):
+    """Return the current anonymous token.
+
+    New flow: anonymous identity is established by minting a token (typically via
+    `AnonymousUserCreate`). Subsequent anonymous requests must send:
+
+        Authorization: Token <anonymous-token>
+
+    This endpoint simply returns the token info when a valid anonymous token is
+    provided.
+    """
 
     permission_classes: ClassVar[list] = [AllowAny]
     serializer_class = AnonymousTokenSerializer
-    throttle_scope = "anonymous-create"
 
-    def create(self, request, *args, **kwargs):
-        ip_address = request.META.get("REMOTE_ADDR")
-        user_agent = request.META.get("HTTP_USER_AGENT", "")
-
-        if not ip_address:
-            raise ValidationError({"ip_address": "IP address is required."})
-
-        anon_user, _ = AnonymousUser.objects.get_or_create(
-            ip_address=ip_address,
-            user_agent=user_agent,
-        )
-
-        if anon_user.is_blocked:
+    def post(self, request, *args, **kwargs):
+        auth = request.auth
+        if not auth or not hasattr(auth, "token"):
             raise PermissionDenied(
-                "Your IP address has been blocked. Please contact support."
+                "Anonymous token is required in Authorization header."
             )
 
-        existing_token = AnonymousToken.objects.filter(
-            anonymous_user=anon_user, is_active=True
-        ).first()
-
-        if existing_token and existing_token.is_valid():
-            serializer = AnonymousTokenSerializer(existing_token)
-            return Response(serializer.data, status=status.HTTP_200_OK)
-
-        new_token = AnonymousToken.create_for_anonymous_user(anon_user)
-        serializer = AnonymousTokenSerializer(new_token)
-        return Response(serializer.data, status=status.HTTP_201_CREATED)
+        serializer = AnonymousTokenSerializer(auth.token)
+        return Response(serializer.data, status=status.HTTP_200_OK)

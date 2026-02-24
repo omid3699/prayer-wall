@@ -11,8 +11,6 @@ from rest_framework.pagination import PageNumberPagination
 from rest_framework.permissions import AllowAny, IsAdminUser, IsAuthenticated
 from rest_framework.response import Response
 
-from apps.users.models import AnonymousUser
-
 from .models import Prayer, PrayerRequest
 from .serializers import (
     PrayerCreateSerializer,
@@ -80,25 +78,15 @@ class PrayerRequestCreate(generics.CreateAPIView):
     def perform_create(self, serializer):
         if self.request.user.is_authenticated:
             serializer.save(user=self.request.user)
-        else:
-            anon_user = self._get_or_create_anonymous_user()
-            serializer.save(anonymous_user=anon_user)
+            return
 
-    def _get_or_create_anonymous_user(self):
-        ip_address = self.request.META.get("REMOTE_ADDR")
-        user_agent = self.request.META.get("HTTP_USER_AGENT", "")
-
-        anon_user, _ = AnonymousUser.objects.get_or_create(
-            ip_address=ip_address,
-            user_agent=user_agent,
-        )
-
-        if anon_user.is_blocked:
+        anon_user = getattr(self.request, "anonymous_user", None)
+        if not anon_user:
             raise PermissionDenied(
-                "Your IP address has been blocked. Please contact support."
+                "Anonymous token is required to create a prayer request."
             )
 
-        return anon_user
+        serializer.save(anonymous_user=anon_user)
 
 
 class PrayerRequestDetail(generics.RetrieveAPIView):
@@ -220,7 +208,11 @@ class PrayerCreate(generics.CreateAPIView):
             anon_user = None
         else:
             user = None
-            anon_user = self._get_or_create_anonymous_user()
+            anon_user = getattr(self.request, "anonymous_user", None)
+            if not anon_user:
+                raise PermissionDenied(
+                    "Anonymous token is required to pray anonymously."
+                )
 
         try:
             serializer.save(
@@ -230,22 +222,6 @@ class PrayerCreate(generics.CreateAPIView):
             raise ValidationError(
                 {"non_field_errors": "You have already prayed for this request."}
             ) from None
-
-    def _get_or_create_anonymous_user(self):
-        ip_address = self.request.META.get("REMOTE_ADDR")
-        user_agent = self.request.META.get("HTTP_USER_AGENT", "")
-
-        anon_user, _ = AnonymousUser.objects.get_or_create(
-            ip_address=ip_address,
-            user_agent=user_agent,
-        )
-
-        if anon_user.is_blocked:
-            raise PermissionDenied(
-                "Your IP address has been blocked. Please contact support."
-            )
-
-        return anon_user
 
 
 class PrayerDelete(generics.DestroyAPIView):

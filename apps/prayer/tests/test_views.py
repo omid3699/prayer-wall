@@ -5,6 +5,7 @@ from rest_framework import status
 from rest_framework.test import APIClient
 
 from apps.prayer.models import Prayer, PrayerRequest
+from apps.users.models import AnonymousToken, AnonymousUser
 
 
 User = get_user_model()
@@ -190,6 +191,10 @@ class TestPrayerRequestCreateView:
         assert prayer_request.description == "Please pray for me"
 
     def test_create_as_anonymous_user(self, api_client):
+        anon_user = AnonymousUser.objects.create(display_name="Guest")
+        token = AnonymousToken.create_for_anonymous_user(anon_user)
+        api_client.credentials(HTTP_AUTHORIZATION=f"Token {token.token}")
+
         response = api_client.post(
             reverse("prayers:create"),
             {"description": "Anonymous prayer request", "is_public": True},
@@ -198,7 +203,7 @@ class TestPrayerRequestCreateView:
 
         assert response.status_code == status.HTTP_201_CREATED
         prayer_request = PrayerRequest.objects.first()
-        assert prayer_request.anonymous_user is not None
+        assert prayer_request.anonymous_user == anon_user
         assert prayer_request.description == "Anonymous prayer request"
 
     def test_create_validation_error(self, api_client):
@@ -351,6 +356,9 @@ class TestPrayerCreateView:
         prayer_request = PrayerRequest.objects.create(
             user=user, description="Pray for me", is_approved=True
         )
+        anon_user = AnonymousUser.objects.create(display_name="Guest")
+        token = AnonymousToken.create_for_anonymous_user(anon_user)
+        api_client.credentials(HTTP_AUTHORIZATION=f"Token {token.token}")
 
         response = api_client.post(
             reverse("prayers:pray", kwargs={"id": prayer_request.id}),
@@ -360,7 +368,7 @@ class TestPrayerCreateView:
 
         assert response.status_code == status.HTTP_201_CREATED
         assert prayer_request.prayers.count() == 1
-        assert prayer_request.prayers.first().anonymous_user is not None
+        assert prayer_request.prayers.first().anonymous_user == anon_user
 
     def test_cannot_pray_twice(self, api_client):
         user = User.objects.create_user(email="user@example.com", password="pass1234")
@@ -477,7 +485,7 @@ class TestMyPrayerRequestsListView:
     def test_requires_authentication(self, api_client):
         response = api_client.get(reverse("prayers:my-requests"))
 
-        assert response.status_code == status.HTTP_401_UNAUTHORIZED
+        assert response.status_code == status.HTTP_403_FORBIDDEN
 
 
 @pytest.mark.django_db
@@ -503,4 +511,4 @@ class TestMyPrayersListView:
     def test_requires_authentication(self, api_client):
         response = api_client.get(reverse("prayers:my-prayers"))
 
-        assert response.status_code == status.HTTP_401_UNAUTHORIZED
+        assert response.status_code == status.HTTP_403_FORBIDDEN
