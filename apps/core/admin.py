@@ -8,6 +8,6 @@ class BaseAdmin(admin.ModelAdmin):
     - Orders by `-created_at` by default.
     """
 
-    list_display = ("uuid", "created_at", "updated_at")
-    readonly_fields = ("uuid", "created_at", "updated_at")
+    list_display = ("id", "created_at", "updated_at")
+    readonly_fields = ("id", "created_at", "updated_at")
     ordering = ("-created_at",)
