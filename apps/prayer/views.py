@@ -21,7 +21,12 @@ from .serializers import (
 
 
 class PrayerRequestList(generics.ListAPIView):
-    """List all approved public prayer requests."""
+    """List prayer requests visible to the caller.
+
+    - Anonymous callers see only approved + public requests.
+    - Authenticated callers see only approved requests (public and private).
+    - Admins can see everything.
+    """
 
     permission_classes: ClassVar[list] = [AllowAny]
     serializer_class = PrayerRequestSerializer
@@ -37,7 +42,18 @@ class PrayerRequestList(generics.ListAPIView):
     ordering: ClassVar[list] = ["-created_at"]
 
     def get_queryset(self):
-        return PrayerRequest.objects.all()
+        qs = PrayerRequest.objects.all()
+
+        user = self.request.user
+        if user.is_authenticated and user.is_superuser:
+            return qs
+
+        qs = qs.filter(is_approved=True)
+
+        if not user.is_authenticated:
+            qs = qs.filter(is_public=True)
+
+        return qs
 
 
 class PrayerRequestCreate(generics.CreateAPIView):
