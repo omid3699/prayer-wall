@@ -89,6 +89,7 @@ REST_FRAMEWORK = {
         "anon": "100/day",
         "login": "10/min",
         "registration": "20/hour",
+        "verification": "10/hour",
         "anonymous-create": "50/day",
         "prayer-request-create": "30/day",
         "prayer-create": "100/day",

@@ -94,7 +94,7 @@ class EmailVerificationToken(BaseModel):
     @classmethod
     def create_for_user(
         cls, user: User, expires_in_hours: int = 24
-    ) -> "EmailVerificationToken":
+    ) -> EmailVerificationToken:
         return cls.objects.create(
             user=user,
             token=cls.generate_token(),
@@ -125,7 +125,7 @@ class AnonymousToken(BaseModel):
     @classmethod
     def create_for_anonymous_user(
         cls, anonymous_user: AnonymousUser, expires_in_days: int = 30
-    ) -> "AnonymousToken":
+    ) -> AnonymousToken:
         return cls.objects.create(
             anonymous_user=anonymous_user,
             token=cls.generate_token(),

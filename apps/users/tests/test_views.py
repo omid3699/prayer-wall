@@ -120,6 +120,18 @@ class TestUserEndpoints:
         assert response.status_code == 204
         assert not User.objects.filter(id=other.id).exists()
 
+    def test_email_verification_request_does_not_return_token(self, api_client):
+        user = User.objects.create_user(email="user@example.com", password="pass1234")
+
+        response = api_client.post(
+            reverse("users:verify-resend"),
+            {"email": user.email},
+            format="json",
+        )
+
+        assert response.status_code == 200
+        assert "token" not in response.data
+
     def test_user_list_admin_only(self, api_client):
         user = User.objects.create_user(email="user@example.com", password="pass1234")
         api_client.force_authenticate(user=user)

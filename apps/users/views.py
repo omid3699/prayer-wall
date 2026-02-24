@@ -192,12 +192,9 @@ class EmailVerificationRequest(generics.GenericAPIView):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-        token = EmailVerificationToken.create_for_user(user)
+        EmailVerificationToken.create_for_user(user)
         return Response(
-            {
-                "detail": "Verification link sent.",
-                "token": token.token,
-            },
+            {"detail": "If the email exists, a verification link will be sent."},
             status=status.HTTP_200_OK,
         )
 
