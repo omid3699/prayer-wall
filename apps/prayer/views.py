@@ -1,5 +1,7 @@
 from typing import ClassVar
 
+from django.db import IntegrityError
+from django.db.models import Count
 from django.shortcuts import get_object_or_404
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import generics
@@ -42,7 +44,7 @@ class PrayerRequestList(generics.ListAPIView):
     ordering: ClassVar[list] = ["-created_at"]
 
     def get_queryset(self):
-        qs = PrayerRequest.objects.all()
+        qs = PrayerRequest.objects.all().annotate(prayer_count=Count("prayers"))
 
         user = self.request.user
         if user.is_authenticated and user.is_superuser:
@@ -211,7 +213,7 @@ class PrayerCreate(generics.CreateAPIView):
             serializer.save(
                 user=user, anonymous_user=anon_user, prayer_request=prayer_request
             )
-        except ValidationError:
+        except IntegrityError:
             raise ValidationError(
                 {"non_field_errors": "You have already prayed for this request."}
             ) from None

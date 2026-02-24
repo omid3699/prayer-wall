@@ -58,9 +58,15 @@ class PrayerRequestSerializer(serializers.ModelSerializer):
         return None
 
     def to_representation(self, instance):
-        """Override to add prayer_count."""
+        """Override to add prayer_count.
+
+        Prefer the annotated `prayer_count` (from queryset) to avoid an N+1 query.
+        """
         data = super().to_representation(instance)
-        data["prayer_count"] = instance.prayers.count()
+        prayer_count = getattr(instance, "prayer_count", None)
+        if prayer_count is None:
+            prayer_count = instance.prayers.count()
+        data["prayer_count"] = prayer_count
         return data
 
 
