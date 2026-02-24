@@ -125,11 +125,23 @@ TEMPLATES = [
 WSGI_APPLICATION = "config.wsgi.application"
 
 # Database
-DATABASES = {
-    "default": dj_database_url.parse(
-        str(env("DATABASE_URL") or f"sqlite:///{BASE_DIR / 'db.sqlite3'}")
+# Prefer DATABASE_URL; fall back to local SQLite. Guard against empty/invalid URLs
+# that would otherwise yield a config without an ENGINE.
+database_url = env("DATABASE_URL")
+if database_url:
+    default_db = dj_database_url.parse(database_url, conn_max_age=600)
+else:
+    default_db = dj_database_url.parse(
+        f"sqlite:///{BASE_DIR / 'db.sqlite3'}", conn_max_age=600
     )
-}
+
+# Ensure ENGINE is always set (parse can return {} if the URL is empty/invalid).
+if not default_db.get("ENGINE"):
+    default_db = dj_database_url.parse(
+        f"sqlite:///{BASE_DIR / 'db.sqlite3'}", conn_max_age=600
+    )
+
+DATABASES = {"default": default_db}
 
 # Password validation
 AUTH_PASSWORD_VALIDATORS = [
