@@ -25,9 +25,14 @@ from .serializers import (
 class PrayerRequestList(generics.ListAPIView):
     """List prayer requests visible to the caller.
 
+    Visibility:
     - Anonymous callers see only approved + public requests.
     - Authenticated callers see only approved requests (public and private).
     - Admins can see everything.
+
+    Filtering:
+    - Admins may filter by `is_approved`/`is_public`.
+    - Non-admins cannot, to avoid confusing/meaningless combinations.
     """
 
     permission_classes: ClassVar[list] = [AllowAny]
@@ -38,7 +43,7 @@ class PrayerRequestList(generics.ListAPIView):
         SearchFilter,
         OrderingFilter,
     ]
-    filterset_fields: ClassVar[list] = ["is_approved", "is_public"]
+    filterset_fields: ClassVar[list] = []
     search_fields: ClassVar[list] = ["description"]
     ordering_fields: ClassVar[list] = ["created_at", "updated_at"]
     ordering: ClassVar[list] = ["-created_at"]
@@ -48,6 +53,14 @@ class PrayerRequestList(generics.ListAPIView):
 
         user = self.request.user
         if user.is_authenticated and user.is_superuser:
+            is_approved = self.request.query_params.get("is_approved")
+            if is_approved is not None:
+                qs = qs.filter(is_approved=is_approved.lower() == "true")
+
+            is_public = self.request.query_params.get("is_public")
+            if is_public is not None:
+                qs = qs.filter(is_public=is_public.lower() == "true")
+
             return qs
 
         qs = qs.filter(is_approved=True)

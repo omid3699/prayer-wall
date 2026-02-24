@@ -108,7 +108,7 @@ class TestPrayerRequestListView:
         assert response.data["results"][0]["description"] == "Second prayer"
         assert response.data["results"][1]["description"] == "First prayer"
 
-    def test_filter_by_is_approved_true(self, api_client):
+    def test_non_admin_cannot_filter_by_is_approved(self, api_client):
         user = User.objects.create_user(email="user@example.com", password="pass1234")
         PrayerRequest.objects.create(
             user=user, description="Approved", is_approved=True, is_public=True
@@ -117,13 +117,14 @@ class TestPrayerRequestListView:
             user=user, description="Not approved", is_approved=False, is_public=True
         )
 
-        response = api_client.get(reverse("prayers:list"), {"is_approved": "true"})
+        # Filtering is_approved is ignored for non-admins; base queryset enforces approval.
+        response = api_client.get(reverse("prayers:list"), {"is_approved": "false"})
 
         assert response.status_code == status.HTTP_200_OK
         assert len(response.data["results"]) == 1
         assert response.data["results"][0]["description"] == "Approved"
 
-    def test_filter_by_is_public_true(self, api_client):
+    def test_non_admin_cannot_filter_by_is_public(self, api_client):
         user = User.objects.create_user(email="user@example.com", password="pass1234")
         PrayerRequest.objects.create(
             user=user, description="Public", is_approved=True, is_public=True
@@ -132,22 +133,30 @@ class TestPrayerRequestListView:
             user=user, description="Private", is_approved=True, is_public=False
         )
 
-        response = api_client.get(reverse("prayers:list"), {"is_public": "true"})
+        # Filtering is_public is ignored for non-admins; base queryset is public-only.
+        response = api_client.get(reverse("prayers:list"), {"is_public": "false"})
 
         assert response.status_code == status.HTTP_200_OK
         assert len(response.data["results"]) == 1
         assert response.data["results"][0]["description"] == "Public"
 
-    def test_filter_combined(self, api_client):
-        user = User.objects.create_user(email="user@example.com", password="pass1234")
+    def test_admin_can_filter_by_is_approved_and_is_public(self, api_client):
+        admin = User.objects.create_superuser(
+            email="admin@example.com", password="pass1234"
+        )
+        api_client.force_authenticate(user=admin)
+
         PrayerRequest.objects.create(
-            user=user, description="Approved public", is_approved=True, is_public=True
+            user=admin, description="Approved public", is_approved=True, is_public=True
         )
         PrayerRequest.objects.create(
-            user=user, description="Approved private", is_approved=True, is_public=False
+            user=admin,
+            description="Approved private",
+            is_approved=True,
+            is_public=False,
         )
         PrayerRequest.objects.create(
-            user=user,
+            user=admin,
             description="Not approved public",
             is_approved=False,
             is_public=True,
